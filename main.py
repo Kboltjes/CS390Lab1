@@ -26,7 +26,8 @@ IMAGE_SIZE = 784
 ALGORITHM = "custom_net"
 #ALGORITHM = "tf_net"
 
-NEURONS_PER_LAYER = 512
+NUM_EPOCHS_CUSTOM_NET = 200
+NUM_EPOCHS_TF_NET = 10
 
 
 
@@ -41,6 +42,19 @@ class NeuralNetwork_2Layer():
         self.W2 = np.random.randn(self.neuronsPerLayer, self.outputSize)
 
     # Activation function.
+    def __activationFunction(self, x):
+        if self.activationFunc == "sigmoid":
+            return self.__sigmoid(x)
+        elif self.activationFunc == "relu":
+            return self.__relu(x)
+
+    def __activationPrimeFunction(self, x):
+        if self.activationFunction == "sigmoid":
+            return self.__sigmoidDerivative(x)
+        elif self.__activationFunction == "relu":
+            return self.__reluDerivative(x)
+
+    # Activation function.
     def __sigmoid(self, x):
         return 1 / (1 + np.exp(-1 * x))
 
@@ -49,6 +63,15 @@ class NeuralNetwork_2Layer():
         sigValue = self.__sigmoid(x)
         return sigValue * (1 - sigValue)
 
+    # Activation function.
+    def __relu(self, x):
+        return max(0, x)
+
+    # Activation prime function.
+    def __reluDerivative(self, x):
+        if x > 0: return 1
+        else: return 0
+
     # Batch generator for mini-batches. Not randomized.
     def __batchGenerator(self, l, n):
         for i in range(0, len(l), n):
@@ -56,42 +79,42 @@ class NeuralNetwork_2Layer():
 
     # Training with backpropagation.
     def train(self, xVals, yVals, epochs = 100000, minibatches = True, mbs = 100):
-        #TODO: Implement backprop. allow minibatches. mbs should specify the size of each minibatch.
         for epoch in range(0, epochs):
-            print(f"batch {epoch} of {epochs}")
+            print(f"Epoch {epoch} of {epochs}")
             # iterate over all the xVals and yVals per epoch
             xBatches = self.__batchGenerator(xVals, mbs)
             yBatches = self.__batchGenerator(yVals, mbs)
 
             # just keep going until it reaches the end of the batches
-            try:
-                while (True):
+            while (True):
+                try:
                     xBatch = next(xBatches)
                     yBatch = next(yBatches)
 
-                    x = xBatch
-                    y = yBatch
-
-                    L1out, L2out = self.__forward(x)
-
-                    L2e = L2out - y
-                    L2d = L2e * self.__sigmoidDerivative(np.dot(L1out, self.W2))
-
-                    L1e = np.dot(L2d, np.transpose(self.W2))
-                    L1d = L1e * self.__sigmoidDerivative(np.dot(x, self.W1))
-
-                    L1a = np.dot(np.transpose(x), L1d) * self.lr
-                    L2a = np.dot(np.transpose(L1out), L2d) * self.lr
-
-                    self.W1 -= L1a
-                    self.W2 -= L2a
-            except StopIteration:
-                pass
+                    L1adjustments, L2adjustments = self.__backward(xBatch, yBatch)
+                    self.W1 -= L1adjustments
+                    self.W2 -= L2adjustments
+                except StopIteration:
+                    break
     # Forward pass.
     def __forward(self, input):
         layer1 = self.__sigmoid(np.dot(input, self.W1))
         layer2 = self.__sigmoid(np.dot(layer1, self.W2))
         return layer1, layer2
+
+    # Backward pass.
+    def __backward(self, x, y):
+        L1out, L2out = self.__forward(x)
+
+        L2e = L2out - y
+        L2d = L2e * self.__sigmoidDerivative(np.dot(L1out, self.W2))
+
+        L1e = np.dot(L2d, np.transpose(self.W2))
+        L1d = L1e * self.__sigmoidDerivative(np.dot(x, self.W1))
+
+        L1a = np.dot(np.transpose(x), L1d) * self.lr
+        L2a = np.dot(np.transpose(L1out), L2d) * self.lr
+        return L1a, L2a
 
     # Predict.
     def predict(self, xVals):
@@ -105,6 +128,29 @@ class NeuralNetwork_2Layer():
 
         return prediction
 
+
+class NeuralNetwork_Keras():
+    def __init__(self):
+        model = tf.keras.models.Sequential([ 
+            tf.keras.layers.Dense(512, activation=tf.nn.sigmoid), 
+            tf.keras.layers.Dense(NUM_CLASSES, activation=tf.nn.sigmoid)
+            ])
+        lossType = tf.keras.losses.BinaryCrossentropy()
+        #lossType = tf.keras.losses.CategoricalCrossentropy()
+        model.compile(optimizer='adam', loss=lossType, metrics=['accuracy'])
+        self.model = model
+
+    def train(self, xVals, yVals, epochs = 100000):
+        self.model.fit(xVals, yVals, epochs=epochs, batch_size=32)
+
+    def predict(self, xVals):
+        output = self.model.predict(xVals)
+
+        prediction = np.zeros(output.shape)
+        for i in range(0, len(prediction)):
+            idxOfMax = np.argmax(output[i])
+            prediction[i][idxOfMax] = 1
+        return prediction
 
 
 # Classifier that just guesses the class label.
@@ -155,14 +201,14 @@ def trainModel(data):
         return None   # Guesser has no model, as it is just guessing.
     elif ALGORITHM == "custom_net":
         print("Building and training Custom_NN.")
-        #print("Not yet implemented.")                   #TODO: Write code to build and train your custon neural net.
-        neuralNet = NeuralNetwork_2Layer(IMAGE_SIZE, NUM_CLASSES, NEURONS_PER_LAYER)
-        neuralNet.train(xTrain, yTrain, 200)
+        neuralNet = NeuralNetwork_2Layer(IMAGE_SIZE, NUM_CLASSES, 64)
+        neuralNet.train(xTrain, yTrain, NUM_EPOCHS_CUSTOM_NET)
         return neuralNet
     elif ALGORITHM == "tf_net":
         print("Building and training TF_NN.")
-        print("Not yet implemented.")                   #TODO: Write code to build and train your keras neural net.
-        return None
+        kerasNeuralNet = NeuralNetwork_Keras()
+        kerasNeuralNet.train(xTrain, yTrain, NUM_EPOCHS_TF_NET)
+        return kerasNeuralNet
     else:
         raise ValueError("Algorithm not recognized.")
 
@@ -176,8 +222,7 @@ def runModel(data, model):
         return model.predict(data)
     elif ALGORITHM == "tf_net":
         print("Testing TF_NN.")
-        print("Not yet implemented.")                   #TODO: Write code to run your keras neural net.
-        return None
+        return model.predict(data)
     else:
         raise ValueError("Algorithm not recognized.")
 
@@ -202,10 +247,7 @@ def main():
     data = preprocessData(raw)
     model = trainModel(data[0])
     preds = runModel(data[1][0], model)
-    print(preds)
-    print(data[1])
     evalResults(data[1], preds)
-
 
 
 if __name__ == '__main__':
