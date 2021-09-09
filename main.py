@@ -6,6 +6,7 @@ from tensorflow.keras.utils import to_categorical
 import random
 import math
 
+#https://medium.com/ai%C2%B3-theory-practice-business/a-beginners-guide-to-numpy-with-sigmoid-relu-and-softmax-activation-functions-25b840a9a272
 
 # Setting random seeds to keep everything deterministic.
 random.seed(1618)
@@ -26,7 +27,13 @@ IMAGE_SIZE = 784
 ALGORITHM = "custom_net"
 #ALGORITHM = "tf_net"
 
-NUM_EPOCHS_CUSTOM_NET = 200
+# Uncomment this to select the activation function for the custom neural network
+#ACTIVATION_FUNCTION = "relu"
+ACTIVATION_FUNCTION = "sigmoid"
+
+# Number of epochs to use for each neural net
+#NUM_EPOCHS_CUSTOM_NET = 200
+NUM_EPOCHS_CUSTOM_NET = 30
 NUM_EPOCHS_TF_NET = 10
 
 
@@ -34,6 +41,7 @@ NUM_EPOCHS_TF_NET = 10
 
 class NeuralNetwork_2Layer():
     def __init__(self, inputSize, outputSize, neuronsPerLayer, learningRate = 0.1):
+        self.activationFunc = ACTIVATION_FUNCTION
         self.inputSize = inputSize
         self.outputSize = outputSize
         self.neuronsPerLayer = neuronsPerLayer
@@ -49,9 +57,9 @@ class NeuralNetwork_2Layer():
             return self.__relu(x)
 
     def __activationPrimeFunction(self, x):
-        if self.activationFunction == "sigmoid":
+        if self.activationFunc == "sigmoid":
             return self.__sigmoidDerivative(x)
-        elif self.__activationFunction == "relu":
+        elif self.activationFunc == "relu":
             return self.__reluDerivative(x)
 
     # Activation function.
@@ -65,12 +73,11 @@ class NeuralNetwork_2Layer():
 
     # Activation function.
     def __relu(self, x):
-        return max(0, x)
+        return np.maximum(0, x)
 
     # Activation prime function.
     def __reluDerivative(self, x):
-        if x > 0: return 1
-        else: return 0
+        return x > 0
 
     # Batch generator for mini-batches. Not randomized.
     def __batchGenerator(self, l, n):
@@ -98,8 +105,8 @@ class NeuralNetwork_2Layer():
                     break
     # Forward pass.
     def __forward(self, input):
-        layer1 = self.__sigmoid(np.dot(input, self.W1))
-        layer2 = self.__sigmoid(np.dot(layer1, self.W2))
+        layer1 = self.__activationFunction(np.dot(input, self.W1))
+        layer2 = self.__activationFunction(np.dot(layer1, self.W2))
         return layer1, layer2
 
     # Backward pass.
@@ -107,10 +114,10 @@ class NeuralNetwork_2Layer():
         L1out, L2out = self.__forward(x)
 
         L2e = L2out - y
-        L2d = L2e * self.__sigmoidDerivative(np.dot(L1out, self.W2))
+        L2d = L2e * self.__activationPrimeFunction(np.dot(L1out, self.W2))
 
         L1e = np.dot(L2d, np.transpose(self.W2))
-        L1d = L1e * self.__sigmoidDerivative(np.dot(x, self.W1))
+        L1d = L1e * self.__activationPrimeFunction(np.dot(x, self.W1))
 
         L1a = np.dot(np.transpose(x), L1d) * self.lr
         L2a = np.dot(np.transpose(L1out), L2d) * self.lr
