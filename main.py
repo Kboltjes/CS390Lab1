@@ -5,6 +5,7 @@ from tensorflow import keras
 from tensorflow.keras.utils import to_categorical
 import random
 import math
+import pandas
 
 from tensorflow.python.ops.nn_impl import weighted_cross_entropy_with_logits
 
@@ -54,8 +55,8 @@ LAYERS_FOR_CUSTOM_NN = 7
 
 
 class NeuralNetwork_2Layer():
-    def __init__(self, inputSize, outputSize, neuronsPerLayer, learningRate = 0.1):
-        self.activationFunc = ACTIVATION_FUNCTION
+    def __init__(self, inputSize, outputSize, neuronsPerLayer, learningRate = 0.1, activationFunc = "sigmoid"):
+        self.activationFunc = activationFunc
         self.inputSize = inputSize
         self.outputSize = outputSize
         self.neuronsPerLayer = neuronsPerLayer
@@ -151,11 +152,11 @@ class NeuralNetwork_2Layer():
 
 
 class NeuralNetwork_NLayer():
-    def __init__(self, inputSize, outputSize, neuronsPerLayer, learningRate = 0.1, numOfLayers = 2):
+    def __init__(self, inputSize, outputSize, neuronsPerLayer, learningRate = 0.1, numOfLayers = 2, activationFunc = "sigmoid"):
         if numOfLayers < 2:
             print("Number of layers must be at least 2")
             return
-        self.activationFunc = ACTIVATION_FUNCTION
+        self.activationFunc = activationFunc
         self.inputSize = inputSize
         self.outputSize = outputSize
         self.neuronsPerLayer = neuronsPerLayer
@@ -340,12 +341,12 @@ def trainModel(data):
         return None   # Guesser has no model, as it is just guessing.
     elif ALGORITHM == "custom_net":
         print("Building and training Custom_NN.")
-        neuralNet = NeuralNetwork_2Layer(IMAGE_SIZE, NUM_CLASSES, 64, learningRate=0.1)
+        neuralNet = NeuralNetwork_2Layer(IMAGE_SIZE, NUM_CLASSES, 64, learningRate=0.1, activationFunc=ACTIVATION_FUNCTION)
         neuralNet.train(xTrain, yTrain, NUM_EPOCHS_CUSTOM_NET)
         return neuralNet
     elif ALGORITHM == "custom_net_n":
         print("Building and training N-Layer Custom_NN.")
-        neuralNet = NeuralNetwork_NLayer(IMAGE_SIZE, NUM_CLASSES, 64, numOfLayers=LAYERS_FOR_CUSTOM_NN, learningRate=0.01)
+        neuralNet = NeuralNetwork_NLayer(IMAGE_SIZE, NUM_CLASSES, 64, numOfLayers=LAYERS_FOR_CUSTOM_NN, learningRate=0.01, activationFunc=ACTIVATION_FUNCTION)
         neuralNet.train(xTrain, yTrain, NUM_EPOCHS_CUSTOM_NET_N_LAYER)
         return neuralNet
     elif ALGORITHM == "tf_net":
@@ -375,7 +376,7 @@ def runModel(data, model):
 
 
 
-def evalResults(data, preds):   #TODO: Add F1 score confusion matrix here.
+def evalResults(data, preds):
     xTest, yTest = data
     acc = 0
     for i in range(preds.shape[0]):
@@ -383,8 +384,15 @@ def evalResults(data, preds):   #TODO: Add F1 score confusion matrix here.
     accuracy = acc / preds.shape[0]
     print("Classifier algorithm: %s" % ALGORITHM)
     print("Classifier accuracy: %f%%" % (accuracy * 100))
-    print()
+    print("Confusion matrix:")
 
+    confMatrix = np.zeros((yTest.shape[1], yTest.shape[1]), dtype=np.int)
+    for i in range(preds.shape[0]):
+        confMatrix[np.argmax(preds[i])][np.argmax(yTest[i])] += 1
+    rowLabels = ['pred-0', 'pred-1', 'pred-2', 'pred-3', 'pred-4', 'pred-5', 'pred-6', 'pred-7', 'pred-8', 'pred-9']
+    colLabels = ['truth-0', 'truth-1', 'truth-2', 'truth-3', 'truth-4', 'truth-5', 'truth-6', 'truth-7', 'truth-8', 'truth-9']
+    confMatrixLabeled = pandas.DataFrame(confMatrix, columns=colLabels, index=rowLabels)
+    print(confMatrixLabeled)
 
 
 #=========================<Main>================================================
