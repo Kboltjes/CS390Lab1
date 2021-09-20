@@ -42,7 +42,7 @@ ACTIVATION_FUNCTION = "sigmoid"
 ###################################################
 #     Uncomment for 2-Layer Custom Neural Network 
 ###################################################
-NUM_EPOCHS_CUSTOM_NET = 20
+NUM_EPOCHS_CUSTOM_NET = 200
 LAYERS_FOR_CUSTOM_NN = 2
 LR_FOR_CUSTOM_NN = 0.1
 
@@ -128,6 +128,7 @@ class NeuralNetwork_NLayer():
                     xBatch = next(xBatches)
                     yBatch = next(yBatches)
 
+                    # get the adjustments from a backpropagation
                     layerAdjustments = self.__backward(xBatch, yBatch)
                     for i in range(0, self.numOfLayers):
                         self.weights[i] -= layerAdjustments[i]
@@ -147,15 +148,18 @@ class NeuralNetwork_NLayer():
     def __backward(self, x, y):
         layerOutputs = self.__forward(x)
 
+        # create arrays for the error, delta, and adjustment for each layer
         error = np.zeros(self.numOfLayers, dtype=np.ndarray)
         layerDeltas = np.zeros(self.numOfLayers, dtype=np.ndarray)
         layerAdjustments = np.zeros(self.numOfLayers, dtype=np.ndarray)
 
+        # final output error
         error[self.numOfLayers - 1] = layerOutputs[len(layerOutputs) - 1] - y
         for i in range(self.numOfLayers - 1, 0, -1):
             layerDeltas[i] = error[i] * self.__activationPrimeFunction(np.dot(layerOutputs[i - 1], self.weights[i]))
             error[i - 1] = np.dot(layerDeltas[i], np.transpose(self.weights[i]))
             layerAdjustments[i] = np.dot(np.transpose(layerOutputs[i - 1]), layerDeltas[i]) * self.lr
+        # calculate first layer adjustment using x
         layerDeltas[0] = error[0] * self.__activationPrimeFunction(np.dot(x, self.weights[0]))
         layerAdjustments[0] = np.dot(np.transpose(x), layerDeltas[0]) * self.lr
         return layerAdjustments
@@ -186,7 +190,6 @@ class NeuralNetwork_Keras():
         self.model = model
 
     def train(self, xVals, yVals, epochs = 100000):
-        #self.model.fit(xVals, yVals, epochs=epochs, batch_size=32, validation_split=0.1)
         self.model.fit(xVals, yVals, epochs=epochs, batch_size=32)
 
     def predict(self, xVals):
